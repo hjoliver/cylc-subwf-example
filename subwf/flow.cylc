@@ -1,0 +1,18 @@
+#!Jinja2
+
+{% set N = N_TASKS | default(3) %}
+
+[scheduling]
+   [[graph]]
+{% for i in range(N) %}
+      R1 = "pre => proc{{i}} => post"
+{% endfor %}
+[runtime]
+   [[pre]]
+       script = hello.sh
+   [[post]]
+       script = echo nodule > $CYLC_WORKFLOW_SHARE_DIR/results
+{% for i in range(N) %}
+   [[proc{{i}}]]
+      script = hello.sh
+{% endfor %}

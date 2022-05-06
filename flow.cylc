@@ -1,0 +1,10 @@
+[scheduling]
+    cycling mode = integer
+    initial cycle point = 1
+    final cycle point = 2
+    [[graph]]
+        P1 = "foo => run-sub => bar"
+[runtime]
+    [[foo, bar]]
+    [[run-sub]]
+        script = "run-subworkflow subwf"
