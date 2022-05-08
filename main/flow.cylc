@@ -1,0 +1,20 @@
+[scheduling]
+    cycling mode = integer
+    initial cycle point = 1
+    final cycle point = 2
+    [[graph]]
+        P1 = """
+           foo => run-sub => bar
+        """
+[runtime]
+    [[foo, bar]]
+    [[run-sub]]
+        script = """
+           echo "N=$((1 + RANDOM % 3))" > $SUBWF_JSET_FILE
+	   subworkflow-run sub 1/post
+	"""
+        err-script = subworkflow-err sub
+        [[[environment]]]
+            SUBWF_JSET_FILE=jset
+    [[recover]]
+        script = subworkflow-recover sub 1/post 

@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -eu
+
+# CLI inputs
+SUBWF_NAME=$1
+
+# Environment inputs
+SUBWF_DETACH=${SUBWF_DETACH:-true}
+
+# In detaching mode, if this task dies kill its sub-workflow.
+if $SUBWF_DETACH; then
+   subworkflow-kill $SUBWF_NAME
+fi

@@ -1,0 +1,46 @@
+#!/bin/bash
+
+set -eu
+
+. $(dirname $0)/subworkflow-lib
+
+# CLI inputs
+SUBWF_SRC_NAME="$1"
+SUBWF_END_TASK="$2"
+
+# Environment inputs
+SUBWF_DETACH=${SUBWF_DETACH:-false}
+SUBWF_JSET_FILE=${SUBWF_JSET_FILE:-""}
+SUBWF_RERUN_FROM_SCRATCH=${SUBWF_RERUN_FROM_SCRATCH:-false}
+SUBWF_PING_INTERVAL=${SUBWF_PING_INTERVAL:-30}
+
+SUBWF_ID=$(subworkflow-get-run-id $SUBWF_SRC_NAME)
+
+if $SUBWF_RERUN_FROM_SCRATCH || (( CYLC_TASK_SUBMIT_NUMBER == 1 )) ; then
+   # Install, to run from scratch.
+   cylc install -n "$SUBWF_ID" "$CYLC_WORKFLOW_RUN_DIR/${SUBWF_SRC_NAME}"
+fi
+
+if [[ -n $SUBWF_JSET_FILE ]]; then
+   CLI_JSET_FILE="--set-file=$SUBWF_JSET_FILE"
+else
+   CLI_JSET_FILE=""
+fi
+
+if $SUBWF_DETACH; then
+   cylc play $CLI_JSET_FILE $SUBWF_ID
+   # wait till the sub-workflow stops running
+   while cylc ping $SUBWF_ID; do
+      sleep $SUBWF_PING_INTERVAL
+   done
+else
+   cylc play --no-detach $CLI_JSET_FILE $SUBWF_ID
+fi
+
+# sub-workflow stopped, but did it succeed?
+cylc workflow-state \
+    --max-polls=1 \
+    --task=${SUBWF_END_TASK#*/} \
+    --point=${SUBWF_END_TASK%/*} \
+    --status=succeeded \
+    $SUBWF_ID

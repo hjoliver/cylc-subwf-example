@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -eu
+
+subworkflow-get-run-id() {
+   SUBWF_SRC_NAME="$1"
+   if [[ -d $CYLC_WORKFLOW_RUN_DIR/_cylc-install ]]; then 
+      # main has no run-name
+      #  - main => main-sub-point
+      #  - foo/main => foo/main-sub-point
+      SUBWF_ID=${CYLC_WORKFLOW_ID}-c${CYLC_TASK_CYCLE_POINT}-$SUBWF_SRC_NAME
+   else
+      # main has a run-name
+      #  - main/run1 => main-sub/run1-point
+      #  - foo/main/run1 => foo/main-run1-sub-point
+      RUNN=${CYLC_WORKFLOW_ID##*/}
+      SUBWF_ID=${CYLC_WORKFLOW_ID%/*}-${RUNN}-c${CYLC_TASK_CYCLE_POINT}-$SUBWF_SRC_NAME
+   fi
+   echo $SUBWF_ID
+}
