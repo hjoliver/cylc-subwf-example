@@ -1,5 +1,4 @@
 #!Jinja2
-
 {% set N = N_TASKS | default(3) | int %}
 
 [scheduler]
@@ -12,7 +11,7 @@
       R1 = "pre => PROC:succeed-all => post"
 [runtime]
    [[root]]
-      script = sleep $((10 + RANDOM % 20))
+      script = sleep $((10 + RANDOM % 20)) && hello.sh
    [[pre]]
       #script = false
    [[PROC]]
