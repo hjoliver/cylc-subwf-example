@@ -1,104 +1,112 @@
 # Cylc 8 sub-workflow example
 
-A sub-workflow is a workflow that runs as a task in another workflow.
+A sub-workflow is a workflow that is run by a task in another workflow.
 
-This example system employs a set of reusable scripts that make managing
-sub-workflows easy.
+Cylc does not have built-in support for sub-workflows, but a task can run any
+application - including another instance of the Cylc scheduler.
+
+This example includes a set of reusable scripts to make sub-workflows easy.
 
 
 ## Why use sub-workflows?
 
-The structure of a Cylc workflow is determined by the `flow.cylc` file at
-scheduler start-up. The workflow can take different paths through the graph
-depending on run time events, but the paths must all be known from the outset.
+The structure of a Cylc workflow is determined at start-up, when the scheduler
+parses the `flow.cylc` file. Different paths can be taken through the graph at
+run time, but the paths must be known at the outset.
  
 Sub-workflows are useful when the internal structure of a sub-graph can only
 be determined at run time. Running the sub-graph as a separate workflow means
-we can configure it anew each time we create and run a new instance.
+we can configure it anew each time we need a new instance.
 
 For example, consider a weather forecasting system that in each cycle needs to
 run multiple local extreme-weather models (and associated processing), the
 number and location of which depends on the current situation. This can be
 done by launching a dynamically determined number of sub-workflows configured
 by dynamically determined input parameters for location and so on, in each
-forecast cycle.
+cycle.
 
 
 ## Understanding sub-workflows
 
 ### Sub-workflow source directories
 
-A sub-workflow is just a task (albeit internally complex) in the main workflow.
-It should be defined in a sub-directory of the main workflow source directory
-(just like its other tasks).
+Sub-workflows should be defined in a sub-directory of the main workflow source
+directory (just like its other tasks).
 
 
 ### Sub-workflow installation
 
-On installing the main workflow to a run directory, the sub-workflow definition
-in that run directory becomes the source for creating sub-workflow instances on
-the fly at run time (just as other installed task definitions are templates for
-creating task instances at run time).
+On installing the main workflow to a run directory, the installed sub-workflow
+definition becomes the source for creating sub-workflow instances on the fly at
+run time (just as other installed task definitions are templates for creating
+task instances at run time).
 
-Unlike other task instances, however, a sub-workflow instance has to be
-installed to its own run directory. This is handled automatically by the
-`subworkflow-run` script called by the sub-workflow launcher task in the main
-workflow.
+Unlike other task instances, however, sub-workflow instances also have to be
+installed to their own run directories in order to run. This is handled
+automatically by the `subworkflow-run` script called by the launcher task in
+the main workflow.
 
 
 ### Sub-workflows are just normal workflows
 
-A sub-workflow instance is just a normal workflow with its own ID and run
-directory. It just happens to be installed and run by a task in another (main)
-workflow, which sees it as a monolithic task. To see the individual tasks in
-the sub-workflow, you have to view the sub-workflow itself.
+A sub-workflow instance is a normal workflow with its own ID and run directory.
+It just happens to be installed and run by a task in another main workflow.
 
-You can manipulate a running sub-workflow, e.g. to retrigger failed tasks,
-directly via its workflow ID.
+You can manipulate a running sub-workflow, e.g. to retrigger failed tasks in it,
+directly via its own workflow ID. To see the individual tasks in the
+sub-workflow, you have to view the sub-workflow itself.
 
 
 ### Sub-workflow completion
 
-Any workflow can potentially finish "successfully" without reaching their
+Any workflow can potentially finish "successfully" without reaching its
 intended end point, e.g. in response to a stop command. Sub-workflow launcher
 tasks need to detect this and interpret it as failure.
 
 
 ### Sub-workflow stall
 
-If a sub-workflow stalls after unexpected task failures, the launcher task will
-appear to be stuck as running. To avoid this, configure sub-workflows to abort
-on a stall timeout. The timeout should allow time to intervene, e.g. by
-retriggering failed tasks, on restart; otherwise it will just shut down again
-right away.
+If a sub-workflow stalls after unexpected internal task failures, the main
+workflow's launcher task will appear to be stuck as running. To avoid this,
+configure sub-workflows to abort on a stall timeout, which will show up as a
+failed launcher task (correctly: the sub-workflow aborted without completing
+successfully). The stall timeout interval should be sufficient to allow
+intervention after restarting the sub-workflow (otherwise you'll have to
+restart it with `--pause`).
 
 
 ### Sub-workflow restart or rerun
 
-Retriggering a main workflow launcher task causes its sub-workflow to restart
-(by default); or to rerun from scratch with a new run directory (with
-`SUBWF_RERUN_FROM_SCRATCH=true`).
+A sub-workflow instance should not be restarted or rerun directly (i.e., via
+its workflow ID) because the main workflow won't see it. (If an application
+happens to be used in a workflow and you run it independently, you can't
+expect the workflow to know you did that). However, it is easy enough to update
+status after a direct restart if necessary - see *Recovering from auto
+migration* below.
 
-This should be done via the launcher task, not directly, so that the main
-workflow sees the sub-workflow. (If you run an application independent of
-a workflow that happens to run it too, you can't expect the workflow to know
-you did that). It is easy to recover from a direct restart though - see
-*Recovering from auto migration* below.
+Instead, retrigger the main launcher task. By default this will restart its
+sub-workflow, but you can also choose to rerun it from scratch (see below). 
 
 
 ### Detaching and non-detaching sub-workflows
 
-Sub-workflows can be detaching (the launcher task runs `cylc play <SUBWF_ID>`)
-or non-detaching (the launcher task runs `cylc play --no-detach <SUBWF_ID>`)
+Sub-workflows can be:
+- Detaching (the launcher task runs `cylc play <SUBWF_ID>`)
+  - these have delayed status updates polled by the launcher task, but they are
+    compatible with scheduler run host load balancing and workflow auto migration.
+- Non-detaching (the launcher task runs `cylc play --no-detach <SUBWF_ID>`)
+  - these have status mirrored instantly in the launcher task, and their stdout
+    appears in its job log, but they are not compatible with scheduler run host
+    load balancing and workflow auto migration.
 
-- Non-detaching sub-workflows have their status mirrored instantly in the
-launcher task, and their stdout appears in its job log, but they are not
-compatible with scheduler host load balancing and workflow auto migration.
-
-- Detaching sub-workflows have delayed status updates polled by the launcher
-task, but they are compatible with run host load balancing and workflow auto
-migration.
-
+In this example, detaching is controlled by a shell variable used in the
+`subworkflow-run` script:
+```bash
+# launcher task environment, main workflow:
+SUBWF_DETACH=false  # (DEFAULT) run sub-workflow in the launcher job script
+# or:
+SUBWF_DETACH=true  # detach the sub-workflow from the launcher job script
+```
 
 ### Sub-workflow housekeeping
 
@@ -129,6 +137,9 @@ cylc-subwf-example> tree $PWD
 └── README.md
 ```
 
+(Note the names "main" and "sub" are arbitrary).
+
+
 #### Install the main workflow
 
 ```bash
@@ -155,12 +166,12 @@ main> tree ~/cylc-run/main
 #### Run the main workflow
 
 ```bash
-main> cylc play --no-detach main
+> cylc play --no-detach main
 ...
 (DONE)
 ```
 
-The sub-workflow launcher task definition in the main workflow looks like this:
+The launcher task definition in the main workflow looks like this:
 ```ini
 [runtime]
     [[run-sub]]
@@ -169,27 +180,19 @@ The sub-workflow launcher task definition in the main workflow looks like this:
 ```
 
 Every instance of `run-sub` calls `subworkflow-run` to install and run a new
-instance of `sub`, and expects the final task `1/post` to succeed before shut
-down.
+instance of `sub`, and it expects the final task `1/post` to succeed before
+shut down.
 
 The `subworkflow-err` script kills detached sub-workflow instances if the
-launcher task gets killed.
+main launcher task gets killed.
 
 Sub-workflow names are based on the parent workflow and cycle point, to group
 parents and sub-workflows together, and to avoid run-directory clashes.
 
 For example, the task instance `1/run-sub` in `main/run8` installs and runs the
-sub-workflow instance `main-run8-c1-sub/run1`. Flat sub-workflow names are
-~necessary because we don't allow `runN` as an internal path component.
+sub-workflow instance `main-run8-c1-sub/run1`. (Flat sub-workflow names are
+~necessary because we don't allow `runN` as an internal path component.)
 
-Whether a sub-workflow detaches or not is controlled by a shell variable in the
-launcher task job environment:
-```bash
-# launcher task environment, main workflow:
-SUBWF_DETACH=false  # (DEFAULT) run sub-workflow in the launcher job script
-# or:
-SUBWF_DETACH=true  # detach the sub-workflow from the launcher job script
-```
 
 #### Sub-workflow run directories
 
@@ -261,10 +264,10 @@ cylc stop 'main*'  # <--- catches main* and main-run*
 
 #### Updating installed sub-workflow definitions
 
-To update the installed sub-workflow definition from source, just reinstall the
+To update the installed sub-workflow definition from source, reinstall the
 main workflow (just as you would to update any main workflow task):
 ```bash
-main> cylc reinstall main
+> cylc reinstall main
 REINSTALLED main/run1 from /home/oliverh/cylc-src/cylc-subwf-example/main
 ```
 
@@ -317,13 +320,13 @@ But, if you like you can manually reinstall and reload the running sub-workflow
 instance like this:
 
 ```bash
-main> cylc reinstall main  # <--- update the sub-workflow defn from source
+> cylc reinstall main  # <--- update the sub-workflow defn from source
 REINSTALLED main/run1 from /home/oliverh/cylc-src/cylc-subwf-example/main
 
-main> cylc reinstall main-run1-c1-sub  # <--- update the instance
+> cylc reinstall main-run1-c1-sub  # <--- update the instance
 REINSTALLED main-run1-c1-sub/run1 from /home/oliverh/cylc-run/main/sub
 
-main> cylc reload main-run1-c1-sub  # <--- (if the flow.cylc changed)
+> cylc reload main-run1-c1-sub  # <--- (if the flow.cylc changed)
 ```
 
 (No need to retrigger the launcher task now; it will remain in the running
@@ -332,12 +335,12 @@ still throughout this procedure).
 
 #### Recovering from workflow auto-migration
 
-Detached workflows are subject to auto-migration: the scheduler can be told (via
-global config) to shut down after restarting itself on another host.
+Detached workflows are subject to auto-migration: the scheduler can be told
+(via global config) to shut down and restart itself on another host.
 
 Migrated sub-workflows will not be seen by the main workflow (whether it
-migrated or not) because they were not restarted by it.
+migrated or not) because they were not restarted by the launcher task.
 
-To recover from this, all you need to do is wait for the migrated sub-workflow
-to finish then retrigger its launcher task. It will restart again and shut down
-immediately, reporting success, because it already ran to completion.
+To recover from this, just wait for the migrated sub-workflow to finish then
+retrigger its launcher task. It will restart again then shut down immediately,
+reporting success, because it already ran to completion.
