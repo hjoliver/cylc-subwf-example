@@ -17,8 +17,11 @@ SUBWF_PING_INTERVAL=${SUBWF_PING_INTERVAL:-30}
 SUBWF_ID=$(subworkflow-get-run-id $SUBWF_SRC_NAME)
 
 if $SUBWF_RERUN_FROM_SCRATCH || (( CYLC_TASK_SUBMIT_NUMBER == 1 )) ; then
-   # Install, to run from scratch.
+   # Install to a new run dir, to run from scratch.
    cylc install -n "$SUBWF_ID" "$CYLC_WORKFLOW_RUN_DIR/${SUBWF_SRC_NAME}"
+else
+   # Reinstall the existing run dir from the installed source
+   cylc reinstall "$SUBWF_ID"
 fi
 
 if [[ -n $SUBWF_JSET_FILE ]]; then
