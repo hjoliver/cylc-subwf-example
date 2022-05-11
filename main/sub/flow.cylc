@@ -11,7 +11,10 @@
       R1 = "pre => PROC:succeed-all => post"
 [runtime]
    [[root]]
-      script = sleep $((10 + RANDOM % 20)) && hello.sh
+      script = """
+         sleep $((5 + RANDOM % 10))
+         hello.sh
+      """
    [[pre]]
       #script = false
    [[PROC]]
@@ -20,3 +23,4 @@
       inherit = PROC
 {% endfor %}
    [[post]]
+      script = touch $DATA_STORE/${CYLC_WORKFLOW_NAME}.data

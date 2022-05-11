@@ -1,20 +1,32 @@
-[scheduling]
-    cycling mode = integer
-    initial cycle point = 1
-    final cycle point = 2
-    [[graph]]
-        P1 = "foo => run-sub => bar"
-[runtime]
-    [[foo, bar]]
-    [[run-sub]]
-        script = """
-           # Get sub-workflow input parameters on the fly
-           # (In this case, for `cylc play --jset=FILE`).
-           echo "N=$((1 + RANDOM % 3))" > $SUBWF_JSET_FILE
+#!Jinja2
 
-           # Install and run a new sub-workflow instance
-           subworkflow-run sub 1/post
-        """
-        err-script = subworkflow-err sub
-        [[[environment]]]
-            SUBWF_JSET_FILE=jset
+{% set HOUSEKEEP = true %}
+
+[scheduling]
+   cycling mode = integer
+   initial cycle point = 1
+   final cycle point = 2
+   [[graph]]
+      P1 = """
+         foo => run-sub => bar
+   {% if HOUSEKEEP %}
+         bar => cleanup
+   {% endif %}
+      """
+[runtime]
+   [[foo, bar]]
+   [[run-sub]]
+      script = """
+         # Get sub-workflow input parameters on the fly
+         # (In this case, for `cylc play --jset=FILE`).
+         echo "N=$((1 + RANDOM % 3))" > $SUBWF_JSET_FILE
+
+         # Install and run a new sub-workflow instance
+         subworkflow-run sub 1/post
+      """
+      err-script = subworkflow-err sub
+      [[[environment]]]
+         SUBWF_JSET_FILE=jset
+         DATA_STORE=$CYLC_WORKFLOW_SHARE_DIR
+   [[cleanup]]
+      script = subworkflow-clean sub

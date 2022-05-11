@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -eu
+
+. $(dirname $0)/subworkflow-lib
+
+# CLI inputs
+SUBWF_SRC_NAME="$1"
+
+cylc clean -y $(subworkflow-get-run-id $SUBWF_SRC_NAME)
