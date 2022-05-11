@@ -48,10 +48,10 @@ workflow.
 
 ### Sub-workflows are just normal workflows
 
-A sub-workflow is just a normal workflow with its own ID and run directory. It
-just happens to be installed and run by a task in another (main) workflow, which
-sees it as a monolithic task. To see the individual tasks in the sub-workflow,
-you have to view the sub-workflow itself.
+A sub-workflow instance is just a normal workflow with its own ID and run
+directory. It just happens to be installed and run by a task in another (main)
+workflow, which sees it as a monolithic task. To see the individual tasks in
+the sub-workflow, you have to view the sub-workflow itself.
 
 You can manipulate a running sub-workflow, e.g. to retrigger failed tasks,
 directly via its workflow ID.
@@ -115,7 +115,8 @@ because each instance generates a new run directory. These can be removed with
 cylc-subwf-example> tree $PWD
 /home/oliverh/cylc-src/cylc-subwf-example
 ├── main  # <--- main workflow source directory
-│   ├── bin  # <--- workflow bin scripts
+│   ├── bin  # <--- main workflow bin scripts
+│   │   ├── subworkflow-clean
 │   │   ├── subworkflow-err
 │   │   ├── subworkflow-kill
 │   │   ├── subworkflow-lib

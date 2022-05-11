@@ -1,5 +1,4 @@
 #!Jinja2
-
 {% set HOUSEKEEP = true %}
 
 [scheduling]
@@ -20,13 +19,12 @@
          # Get sub-workflow input parameters on the fly
          # (In this case, for `cylc play --jset=FILE`).
          echo "N=$((1 + RANDOM % 3))" > $SUBWF_JSET_FILE
-
+         echo "DATA_STORE=\"$CYLC_WORKFLOW_SHARE_DIR\"" >> $SUBWF_JSET_FILE
          # Install and run a new sub-workflow instance
          subworkflow-run sub 1/post
       """
       err-script = subworkflow-err sub
       [[[environment]]]
          SUBWF_JSET_FILE=jset
-         DATA_STORE=$CYLC_WORKFLOW_SHARE_DIR
    [[cleanup]]
       script = subworkflow-clean sub
