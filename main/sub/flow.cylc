@@ -23,4 +23,8 @@
       inherit = PROC
 {% endfor %}
    [[post]]
-      script = touch {{DATA_STORE}}/${CYLC_WORKFLOW_NAME}.data
+      # Write data for downstream users.
+      script = """
+         # Use basename in case of a hierarchical workflow name.
+         touch {{DATA_STORE}}/$(basename ${CYLC_WORKFLOW_NAME}).data
+      """
