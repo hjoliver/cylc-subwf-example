@@ -2,8 +2,8 @@
 
 A sub-workflow is a workflow that is run by a task in another workflow.
 
-Cylc does not have built-in support for sub-workflows, but a task can run any
-application - including another instance of the Cylc scheduler.
+Cylc does not have built-in support for sub-workflows, but a Cylc task can run
+any application, including another instance of the Cylc scheduler.
 
 This example includes a set of reusable scripts to make sub-workflows easy.
 
@@ -31,7 +31,7 @@ cycle.
 ### Sub-workflow source directories
 
 Sub-workflows should be defined in a sub-directory of the main workflow source
-directory (just like its other tasks).
+directory (just like other applications that the main workflow runs).
 
 
 ### Sub-workflow installation
@@ -274,9 +274,9 @@ REINSTALLED main/run1 from /home/oliverh/cylc-src/cylc-subwf-example/main
 The updated definition will apply for all future sub-workflow instances. It will
 also affect already-installed but stopped sub-workflow instances restarted by
 retriggering their launcher task, because the `subworkflow-run` script uses
-`cylc install` to create a new sub-workflow run directory for a rerun from
-scratch, and `cylc reinstall` to update an existing sub-workflow run directory
-for a restart.
+`cylc install` to create a new sub-workflow run directory from the "source" in
+the main run directory, for a rerun from scratch; and `cylc reinstall` to
+update an existing sub-workflow run directory for a restart.
 
 
 #### Restarting or rerunning stopped sub-workflows
