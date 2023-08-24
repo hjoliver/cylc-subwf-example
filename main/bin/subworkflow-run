@@ -6,7 +6,6 @@ set -eu
 
 # CLI inputs
 SUBWF_SRC_NAME="$1"
-SUBWF_END_TASK="$2"
 
 # Environment inputs
 SUBWF_DETACH=${SUBWF_DETACH:-false}
@@ -14,6 +13,7 @@ SUBWF_JSET_FILE=${SUBWF_JSET_FILE:-""}
 SUBWF_RERUN_FROM_SCRATCH=${SUBWF_RERUN_FROM_SCRATCH:-false}
 SUBWF_PING_INTERVAL=${SUBWF_PING_INTERVAL:-30}
 
+# NOTE: this ID does not include the runN extension.
 SUBWF_ID=$(subworkflow-get-run-id $SUBWF_SRC_NAME)
 
 if $SUBWF_RERUN_FROM_SCRATCH || (( CYLC_TASK_SUBMIT_NUMBER == 1 )) ; then
@@ -40,10 +40,13 @@ else
    cylc play --no-detach $CLI_JSET_FILE $SUBWF_ID
 fi
 
-# sub-workflow stopped, but did it succeed?
-cylc workflow-state \
-    --max-polls=1 \
-    --task=${SUBWF_END_TASK#*/} \
-    --point=${SUBWF_END_TASK%/*} \
-    --status=succeeded \
-    $SUBWF_ID
+# sub-workflow stopped, but did it complete?
+# task_pool DB table should be empty.
+TASK_POOL=$(sqlite3 "${HOME}/cylc-run/${SUBWF_ID}/runN/log/db" "select * from task_pool")
+if [[ -z "$TASK_POOL" ]]; then
+    echo "Sub-workflow $SUBWF_ID completed."
+    exit 0
+else
+    echo "Sub-workflow $SUBWF_ID stopped early."
+    exit 1
+fi

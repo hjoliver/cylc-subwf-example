@@ -61,8 +61,11 @@ sub-workflow, you have to view the sub-workflow itself.
 
 Any workflow can potentially finish "successfully" without reaching its
 intended end point, e.g. in response to a stop command. Sub-workflow launcher
-tasks need to detect this and interpret it as failure.
-
+tasks need to detect this and interpret it as failure. The easiest way to
+do this currently is to check that the `task_pool` table in the sub-workflow
+run database is empty. An early shutdown, whether under an error condition or
+not, will leave entries in the task pool table to continuing the workflow after
+a restart.
 
 ### Sub-workflow stall
 
@@ -175,13 +178,12 @@ The launcher task definition in the main workflow looks like this:
 ```ini
 [runtime]
     [[run-sub]]
-        script = subworkflow-run sub 1/post
+        script = subworkflow-run sub
         err-script = subworkflow-err sub
 ```
 
 Every instance of `run-sub` calls `subworkflow-run` to install and run a new
-instance of `sub`, and it expects the final task `1/post` to succeed before
-shut down.
+instance of `sub`.
 
 The `subworkflow-err` script kills detached sub-workflow instances if the
 main launcher task gets killed.
