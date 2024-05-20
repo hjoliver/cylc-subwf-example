@@ -3,7 +3,7 @@
 A sub-workflow is a workflow that is run by a task in another workflow.
 
 Cylc does not have built-in support for sub-workflows, but a Cylc task can run
-any application, including another instance of the Cylc scheduler.
+any application, including another Cylc scheduler (i.e. another workflow).
 
 This example includes a set of reusable scripts to make sub-workflows easy.
 
@@ -16,14 +16,13 @@ run time, but the paths must be known at the outset.
  
 Sub-workflows are useful when the internal structure of a sub-graph can only
 be determined at run time. Running the sub-graph as a separate workflow means
-we can configure it anew each time we need a new instance.
+we can configure it anew each time we need to run it.
 
 For example, consider a weather forecasting system that in each cycle needs to
 run multiple local extreme-weather models (and associated processing), the
 number and location of which depends on the current situation. This can be
 done by launching a dynamically determined number of sub-workflows configured
-by dynamically determined input parameters for location and so on, in each
-cycle.
+by dynamically determined input parameters for location etc., in each cycle.
 
 
 ## Understanding sub-workflows
@@ -42,50 +41,47 @@ run time (just as other installed task definitions are templates for creating
 task instances at run time).
 
 Unlike other task instances, however, sub-workflow instances also have to be
-installed to their own run directories in order to run. This is handled
-automatically by the `subworkflow-run` script called by the launcher task in
-the main workflow.
+installed to their own run directories in order to run. In the example, this is
+handled by the `subworkflow-run` script called by the main launcher task.
 
 
 ### Sub-workflows are just normal workflows
 
 A sub-workflow instance is a normal workflow with its own ID and run directory.
-It just happens to be installed and run by a task in another main workflow.
+It just happens to be installed and run by a task in the main workflow.
 
-You can manipulate a running sub-workflow, e.g. to retrigger failed tasks in it,
-directly via its own workflow ID. To see the individual tasks in the
-sub-workflow, you have to view the sub-workflow itself.
+You can manipulate a sub-workflow, e.g. to retrigger failed tasks in it, directly
+via its own workflow ID. To see the individual tasks in the sub-workflow, you have
+to view the sub-workflow itself.
 
 
 ### Sub-workflow completion
 
-Any workflow can potentially finish "successfully" without reaching its
-intended end point, e.g. in response to a stop command. Sub-workflow launcher
-tasks need to detect this and interpret it as failure. The easiest way to
-do this currently is to check that the `task_pool` table in the sub-workflow
-run database is empty. An early shutdown, whether under an error condition or
-not, will leave entries in the task pool table to continuing the workflow after
-a restart.
+Any workflow can potentially finish "successfully" without reaching its intended end
+point, e.g. in response to a stop command. Sub-workflow launcher tasks need to detect
+this and interpret it as failure. The easiest way to do this currently is to check
+that the `task_pool` table in the sub-workflow run database is empty. An early
+shutdown, whether under an error condition or not, will leave entries in the task
+pool table to allow it continue after a restart.
 
 ### Sub-workflow stall
 
 If a sub-workflow stalls after unexpected internal task failures, the main
-workflow's launcher task will appear to be stuck as running. To avoid this,
-configure sub-workflows to abort on a stall timeout, which will show up as a
-failed launcher task (correctly: the sub-workflow aborted without completing
-successfully). The stall timeout interval should be sufficient to allow
-intervention after restarting the sub-workflow (otherwise you'll have to
-restart it with `--pause`).
+workflow's launcher task will appear to be stuck as running (correctly: the
+sub-workflow's scheduler is still running, it just has no jobs to submit).
+To avoid this, configure sub-workflows to abort on a stall timeout, which will
+show up as a failed launcher task (correctly: the sub-workflow aborted without
+completing successfully). The sub-workflow stall timeout interval should be sufficient
+to allow intervention after a restart (otherwise restart with `--pause`).
 
 
 ### Sub-workflow restart or rerun
 
-A sub-workflow instance should not be restarted or rerun directly (i.e., via
-its workflow ID) because the main workflow won't see it. (If an application
-happens to be used in a workflow and you run it independently, you can't
-expect the workflow to know you did that). However, it is easy enough to update
-status after a direct restart if necessary - see *Recovering from auto
-migration* below.
+If possible, a sub-workflow instance should not be restarted or rerun directly
+via its own workflow ID, because the main workflow won't know you did that. (If
+an application is used in a workflow and you run it independently as well, you
+can't expect the workflow to know you did that). However, you can update status
+after a direct restart if necessary - see *manipulating sub-workflow state* below.
 
 Instead, retrigger the main launcher task. By default this will restart its
 sub-workflow, but you can also choose to rerun it from scratch (see below). 
@@ -335,14 +331,27 @@ REINSTALLED main-run1-c1-sub/run1 from /home/oliverh/cylc-run/main/sub
 still throughout this procedure).
 
 
-#### Recovering from workflow auto-migration
+#### Manipulating sub-workflow state
 
-Detached workflows are subject to auto-migration: the scheduler can be told
-(via global config) to shut down and restart itself on another host.
+Where possible, manually trigger a sub-workflow instance via its launcher
+task, so that the main worklfow sees it as an application under its control.
 
-Migrated sub-workflows will not be seen by the main workflow (whether it
-migrated or not) because they were not restarted by the launcher task.
+If you restart or rerun a sub-workflow instance directly via its own
+workflow ID, the main workflow won't know you did that. (If an application
+is used in a workflow and you run it independently as well, you can't expect
+the workflow to know you did that).
+
+However, if you do directly trigger a sub-workflow for some reason, just
+wait for it to complete, then trigger it again via its launcher task. The
+scheduler will see that the sub-workflow already ran to completion, and will
+shut down with success status, so the laucher task will succeed.
+
+Note that scheduler auto-migration of detached workflows can cause this.
+The scheduler can be told (via global config) to shut down after restarting
+itself on another run host. The migrated sub-workflow will not be seen by
+the main workflow (whether it also migrated or not) because it was not
+restarted by the launcher task.
 
 To recover from this, just wait for the migrated sub-workflow to finish then
-retrigger its launcher task. It will restart again then shut down immediately,
-reporting success, because it already ran to completion.
+retrigger its launcher task. It will restart again then shut down immediately
+with success, because it already ran to completion.
