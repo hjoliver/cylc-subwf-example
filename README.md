@@ -150,7 +150,7 @@ main> tree ~/cylc-run/main
 /home/oliverh/cylc-run/main
 ├── _cylc-install
 │   └── source -> /home/oliverh/cylc-src/cylc-subwf-example/main
-├── run1  # <--- main worklow run directory
+├── run1  # <--- main workflow run directory
 │   ├── bin
 │   │   └── ...
 │   ├── flow.cylc
@@ -334,7 +334,7 @@ still throughout this procedure).
 #### Manipulating sub-workflow state
 
 Where possible, manually trigger a sub-workflow instance via its launcher
-task, so that the main worklfow sees it as an application under its control.
+task, so that the main workflow sees it as an application under its control.
 
 If you restart or rerun a sub-workflow instance directly via its own
 workflow ID, the main workflow won't know you did that. (If an application
@@ -345,6 +345,9 @@ However, if you do directly trigger a sub-workflow for some reason, just
 wait for it to complete, then trigger it again via its launcher task. The
 scheduler will see that the sub-workflow already ran to completion, and will
 shut down with success status, so the laucher task will succeed.
+
+Or (from Cylc 8.3.0) manually set the launcher task to succeeded, if you know
+that its sub-workflow completed.
 
 Note that scheduler auto-migration of detached workflows can cause this.
 The scheduler can be told (via global config) to shut down after restarting
