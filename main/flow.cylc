@@ -25,6 +25,6 @@
       """
       err-script = subworkflow-err sub
       [[[environment]]]
-         SUBWF_JSET_FILE=jset
+         SUBWF_JSET_FILE=$CYLC_TASK_WORK_DIR/jset
    [[cleanup]]
       script = subworkflow-clean sub
